@@ -1,0 +1,29 @@
+# version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: bakery_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./bakery_project/media:/app/bakery_project/media
+      - ./bakery_project/db.sqlite3:/app/bakery_project/db.sqlite3
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: gunicorn bakery_project.wsgi:application --bind 0.0.0.0:8000 --workers 3 --threads 2 --timeout 120
+
+  nginx:
+    image: nginx:alpine
+    container_name: bakery_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./bakery_project/staticfiles:/app/staticfiles:ro
+      - ./bakery_project/media:/app/media:ro
+    depends_on:
+      - web
+    restart: unless-stopped

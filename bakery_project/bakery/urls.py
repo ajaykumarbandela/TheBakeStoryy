@@ -11,7 +11,12 @@ urlpatterns = [
     path('orders/', views.orders_view, name='orders'),
     path('payment/', views.payment_view, name='payment'),
     path('upi-payment/', views.upi_payment_view, name='upi_payment'),
+    path('razorpay/callback/', views.razorpay_callback, name='razorpay_callback'),
+    path('razorpay/webhook/', views.razorpay_webhook, name='razorpay_webhook'),
+    path('api/submit-contact/', views.submit_contact_form, name='submit_contact'),
     path('login/', views.login_view, name='login'),
     path('signup/', views.signup_view, name='signup'),
     path('logout/', views.logout_view, name='logout'),
+    path('bot/', views.chatbot_view, name='chatbot'),  # Chatbot page
+   
 ]

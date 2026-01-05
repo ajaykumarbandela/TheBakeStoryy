@@ -364,7 +364,9 @@
                     <h3 style="color: #d2691e;">Confirm Your Order</h3>
                     
                     <button type="submit" class="place-order-btn" id="placeOrderBtn">
-                        <i class="ri-shopping-bag-line"></i> Place Order
+                        <i class="ri-shopping-bag-line"></i>  
+                            Place Order
+                    
                     </button>
                     
                     <p style="font-size: 12px; color: #666; margin-top: 15px;">
@@ -382,6 +384,7 @@
 
 {% block extra_js %}
 <script>
+  
     // Configuration - UPDATE THESE WITH YOUR DETAILS
     const UPI_CONFIG = {
         upiId: 'mrajaypatel@slc',  // Replace with your actual UPI ID
@@ -438,7 +441,9 @@
         const orderItemsList = document.getElementById('orderItemsList');
         let totalAmount = 0;
         let deliveryFee = 50; // ₹50 delivery fee
-        
+   
+    }
+
         if (orderItemsList) {
             orderItemsList.innerHTML = '';
             

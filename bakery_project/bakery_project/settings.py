@@ -1,7 +1,11 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Import dj_database_url only if needed
 try:
@@ -13,15 +17,15 @@ except ImportError:
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-your-secret-key-here-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'  # Default to True for local development
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,*').split(',')
+ALLOWED_HOSTS = ['*']  # For testing, allows all hosts. For production, use your EC2 public DNS/IP.
 
-# Security settings for production
+# Security settings for production (disabled SSL redirect for testing)
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False  # Set to True only when you have HTTPS configured
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
@@ -35,12 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'corsheaders',  # Added for chatbot API
     'bakery',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise for static files
+    'corsheaders.middleware.CorsMiddleware',  # Added for chatbot API - must be before CommonMiddleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -98,7 +104,7 @@ USE_TZ = True
 
 # Static files configuration
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = []
 
 # Media files (uploads)
@@ -113,14 +119,61 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.AllowAny',  # Allow access for chatbot
     ],
 }
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+
+# Razorpay Configuration
+# Use environment variables for live mode (rzp_live_*), test mode (rzp_test_*)
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID')  
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET')    
+
+# AWS DynamoDB Configuration
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')  
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_REGION_NAME = os.environ.get('AWS_REGION_NAME', 'ap-south-1') 
+DYNAMODB_CONTACT_TABLE = 'bakery_contacts' 
+
+# SMS Notification Settings
+ADMIN_PHONE_NUMBER = '+918074691873'  
+BAKERY_NAME = 'Heavenly Bakery'
+SMS_NOTIFICATIONS_ENABLED = False
+# AWS SES Email Configuration (Professional Email Service)
+# For local development, use console backend
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django_ses.SESBackend'
+    AWS_SES_REGION_NAME = 'ap-south-1'  
+    AWS_SES_REGION_ENDPOINT = 'email.ap-south-1.amazonaws.com'
+    AWS_SES_FROM_EMAIL = 'btechmuthyam@gmail.com'  # verified in AWS SES
+
+# Email Notification Settings
+EMAIL_HOST_USER = 'btechmuthyam@gmail.com'  # Your email
+ADMIN_EMAIL = 'btechmuthyam@gmail.com'  # Where you want to receive notifications
+EMAIL_NOTIFICATIONS_ENABLED = True  
+
+# Order Notification Settings
+ORDER_NOTIFICATION_EMAIL = 'btechmuthyam@gmail.com'  # Where to receive order notifications
+ORDER_EMAIL_NOTIFICATIONS_ENABLED = True  
+ORDER_SMS_NOTIFICATIONS_ENABLED = False  
+BAKERY_BUSINESS_NAME = 'Heavenly Bakery'
+BAKERY_BUSINESS_PHONE = '8074691873'
+
+# CORS Settings for Chatbot API (allows requests from HTML file)
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
+# For production, use:
+# CORS_ALLOWED_ORIGINS = [
+#     "https://yourdomain.com",
+# ]
+BAKERY_BUSINESS_ADDRESS = 'Chaitanyapuri, Dilsukhnagar, Hyderabad'
+BAKERY_BUSINESS_EMAIL = 'btechmuthyam@gmail.com'

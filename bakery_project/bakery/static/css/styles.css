@@ -9,6 +9,9 @@ body {
     width: 100%;
 }
 
+
+
+
 nav {
     height: 17vh;
     width: 100%;
@@ -191,6 +194,8 @@ footer > button:hover,
 }
 
 /* ===== CONTAINER STYLES ===== */
+
+
 #container {
     display: flex;
     flex-direction: row;

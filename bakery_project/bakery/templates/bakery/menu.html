@@ -72,8 +72,17 @@
         
         let totalQuantity = 0;
         let totalPrice = 0;
+
         
-        // Calculate totals from cart
+
+
+    function addprocessingfee(totalfee){
+        totalfee+=totalfee*3/100
+    }
+
+        
+
+
         Object.keys(cart).forEach(itemId => {
             const item = cart[itemId];
             if (item && typeof item === 'object') {
@@ -86,7 +95,7 @@
         });
         
         console.log('Total quantity:', totalQuantity);
-        console.log('Total price:', totalPrice);
+        console.log('Total price:', addprocessingfee(totalPrice));
         
         // Update navbar display - try multiple selectors
         const navQuantity = document.querySelector('#quantity') || 

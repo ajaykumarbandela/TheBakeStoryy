@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import api_views 
-from .views import upi_payment_view 
+from .views import upi_payment_view
+from . import chatbot_views 
 
 # Create router and register viewsets
 router = DefaultRouter()
@@ -26,4 +27,17 @@ urlpatterns = [
     path('dashboard/stats/', api_views.dashboard_stats_api, name='api_dashboard_stats'),
 
     path('dashboard/upi-payments/', upi_payment_view, name='upi-payment'),
+    
+    # Chatbot endpoints
+    path('chatbot/query/', chatbot_views.chatbot_query, name='chatbot_query'),
+    path('chatbot/refresh/', chatbot_views.chatbot_refresh, name='chatbot_refresh'),
+    path('chatbot/status/', chatbot_views.chatbot_status, name='chatbot_status'),
+    
+    # Chatbot order flow
+    path('chatbot/order/search/', chatbot_views.chatbot_order_search, name='chatbot_order_search'),
+    path('chatbot/order/initiate/', chatbot_views.chatbot_order_initiate, name='chatbot_order_initiate'),
+    path('chatbot/order/address/', chatbot_views.chatbot_order_address, name='chatbot_order_address'),
+    path('chatbot/order/create/', chatbot_views.chatbot_order_create, name='chatbot_order_create'),
+    path('chatbot/order/payment/verify/', chatbot_views.chatbot_order_payment_verify, name='chatbot_order_payment_verify'),
+    path('chatbot/order/status/<str:order_id>/', chatbot_views.chatbot_order_status, name='chatbot_order_status'),
 ]

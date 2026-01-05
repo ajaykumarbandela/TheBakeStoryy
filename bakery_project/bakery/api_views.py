@@ -42,8 +42,6 @@ class StatusUpdateMixin:
         return instance
 
 
-
-
 class MenuItemViewSet(viewsets.ModelViewSet):
     """
     ViewSet for Menu Items with full CRUD operations

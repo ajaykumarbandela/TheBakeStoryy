@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Payment - Bakery Shop</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .payment-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 50px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #FF6B6B;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h2 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+        
+        .order-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        
+        .order-info p {
+            margin: 10px 0;
+            color: #555;
+            font-size: 16px;
+        }
+        
+        .order-info strong {
+            color: #333;
+            display: inline-block;
+            width: 120px;
+        }
+        
+        .amount {
+            font-size: 32px;
+            color: #FF6B6B;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+        
+        .secure-badge::before {
+            content: "🔒";
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="loading-spinner"></div>
+        <h2>Processing Payment...</h2>
+        <p style="color: #666; margin-bottom: 20px;">Please wait while we prepare your payment</p>
+        
+        <div class="order-info">
+            <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+            <p><strong>Items:</strong> {{ order.items.count }} item(s)</p>
+            <p><strong>Subtotal:</strong> ₹{{ order.total_amount }}</p>
+            <p><strong>Delivery Fee:</strong> ₹{{ order.delivery_fee }}</p>
+        </div>
+        
+        <div class="amount">₹{{ order.grand_total }}</div>
+        
+        <div class="secure-badge">
+            Secure Payment with Razorpay
+        </div>
+    </div>
+    
+    <script>
+        // Auto-open Razorpay payment popup
+        var options = {
+            "key": "{{ razorpay_key_id }}",
+            "amount": "{{ amount }}",
+            "currency": "{{ currency }}",
+            "name": "Bakery Shop",
+            "description": "Order #{{ order.order_id }}",
+            "image": "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+            "order_id": "{{ razorpay_order_id }}",
+            "handler": function (response){
+                // Payment successful - clear cart and send to verification endpoint
+                localStorage.removeItem('bakeryCart');
+                
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "razorpay_callback" %}';
+                
+                var fields = {
+                    'razorpay_payment_id': response.razorpay_payment_id,
+                    'razorpay_order_id': response.razorpay_order_id,
+                    'razorpay_signature': response.razorpay_signature,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                };
+                
+                for(var key in fields) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = fields[key];
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            },
+            "prefill": {
+                "name": "{{ user_name }}",
+                "email": "{{ user_email }}",
+                "contact": "{{ user_phone }}"
+            },
+            "notes": {
+                "order_id": "{{ order.order_id }}"
+            },
+            "theme": {
+                "color": "#FF6B6B"
+            },
+            "modal": {
+                "ondismiss": function(){
+                    if(confirm('Are you sure you want to cancel the payment?')) {
+                        window.location.href = '{% url "cart" %}';
+                    } else {
+                        rzp1.open();
+                    }
+                }
+            }
+        };
+        
+        var rzp1 = new Razorpay(options);
+        
+        // Open Razorpay popup when page loads
+        window.onload = function() {
+            setTimeout(function() {
+                rzp1.open();
+            }, 500);
+        };
+        
+        // Handle payment errors
+        rzp1.on('payment.failed', function (response){
+            alert('Payment failed: ' + response.error.description);
+            window.location.href = '{% url "cart" %}';
+        });
+    </script>
+</body>
+</html>

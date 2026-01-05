@@ -6,11 +6,29 @@
     <title>{% block title %}TheBakeStory{% endblock %}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'css/styles.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/chatbot.css' %}?v=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css" integrity="sha512-kJlvECunwXftkPwyvHbclArO8wszgBGisiLeuDFwNM8ws+wKIw0sv1os3ClWZOcrEB2eRXULYUsm8OVRGJKwGA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Minimal inline styles - main styles in chatbot.css */
+        @keyframes ripple-pulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -47,6 +65,107 @@
             </aside>
         </nav>
     </main>
+
+    <!-- Floating Chatbot Widget -->
+    <div class="chatbot-toggle" id="chatbotToggle">
+        <div style="font-size: 35px;">🍽️</div>
+        <div class="notification-badge" id="chatNotification" style="display: none;">1</div>
+    </div>
+
+    <!-- Chatbot Container -->
+    <div class="chatbot-container" id="chatbotContainer">
+        <!-- Header -->
+        <div class="chatbot-header">
+            <div class="chatbot-header-left">
+                <div class="bot-avatar">🍰</div>
+                <div class="bot-info">
+                    <h3>Bake Story Assistant</h3>
+                    <p><span class="bot-status"></span>Online - Ready to help!</p>
+                </div>
+            </div>
+            <div class="chatbot-actions">
+                <button onclick="refreshChat()" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                <button onclick="minimizeChat()" title="Minimize"><i class="fas fa-minus"></i></button>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="quick-action-btn" onclick="sendQuickMessage('Show me today\'s specials')">
+                <i class="fas fa-star"></i> Specials
+            </button>
+            <button class="quick-action-btn" onclick="sendQuickMessage('What cakes do you have?')">
+                <i class="fas fa-birthday-cake"></i> Cakes
+            </button>
+            <button class="quick-action-btn" onclick="sendQuickMessage('Show my orders')">
+                <i class="fas fa-shopping-bag"></i> Orders
+            </button>
+            <button class="quick-action-btn" onclick="sendQuickMessage('Contact information')">
+                <i class="fas fa-phone"></i> Contact
+            </button>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="chatbot-messages" id="chatMessages">
+            <div class="welcome-screen" id="welcomeScreen">
+                <i class="fas fa-robot"></i>
+                <h3>Welcome to The Bake Story!</h3>
+                <p>I'm your AI assistant. How can I help you today?</p>
+                
+                <div class="welcome-features">
+                    <div class="feature-item">
+                        <i class="fas fa-search"></i>
+                        <h4>Browse Menu</h4>
+                        <p>Explore our delicious items</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h4>Place Orders</h4>
+                        <p>Order your favorites easily</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-clock"></i>
+                        <h4>Track Orders</h4>
+                        <p>Check your order status</p>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-headset"></i>
+                        <h4>Get Support</h4>
+                        <p>24/7 assistance available</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar">🍰</div>
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chatbot-input">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    placeholder="Type your message..." 
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button class="attach-btn" title="Attach file">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+            </div>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+   
      {% comment %}
 
     {% if messages %}
@@ -143,7 +262,1135 @@
             console.log('Cart updated event received, refreshing display');
             updateCartDisplay();
         });
+
+        // ========================================
+        // CHATBOT FUNCTIONALITY
+        // ========================================
+        
+        const chatbotToggle = document.getElementById('chatbotToggle');
+        const chatbotContainer = document.getElementById('chatbotContainer');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatNotification = document.getElementById('chatNotification');
+        
+        const API_URL = '/api/chatbot/query/';
+        let messageHistory = [];
+        let currentOrderSession = null;
+        let orderStep = null; // 'search', 'select_item', 'address', 'payment'
+        let pendingOrderConfirmation = null; // Store pending order details for confirmation
+        let chatbotCart = []; // Shopping cart for multiple items
+        
+        // Clear all order state
+        function clearOrderState() {
+            console.log('🧹 Clearing order state');
+            currentOrderSession = null;
+            orderStep = null;
+            pendingOrderConfirmation = null;
+            chatbotCart = [];
+        }
+        
+        // Toggle chatbot
+        chatbotToggle.addEventListener('click', function() {
+            chatbotContainer.classList.toggle('active');
+            if (chatbotContainer.classList.contains('active')) {
+                chatInput.focus();
+                chatNotification.style.display = 'none';
+            }
+        });
+        
+        // Minimize chat
+        function minimizeChat() {
+            chatbotContainer.classList.remove('active');
+        }
+        
+        // Refresh chat
+        function refreshChat() {
+            clearOrderState();
+            messageHistory = [];
+            chatMessages.innerHTML = '';
+            welcomeScreen.style.display = 'block';
+            addMessage('bot', 'Chat refreshed! How can I help you?');
+        }
+        
+        // Handle Enter key
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        // Send quick message
+        function sendQuickMessage(message) {
+            chatInput.value = message;
+            sendMessage();
+        }
+        
+        // Send message
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            
+            if (!message) return;
+            
+            console.log('📨 sendMessage called with:', message);
+            console.log('📋 Current pendingOrderConfirmation:', pendingOrderConfirmation);
+            
+            // Hide welcome screen
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+            }
+            
+            // Add user message
+            addMessage('user', message);
+            chatInput.value = '';
+            
+            // Check if waiting for order confirmation
+            if (pendingOrderConfirmation) {
+                console.log('⏳ Pending confirmation detected, calling handleOrderSearch');
+                await handleOrderSearch(message);
+                return;
+            }
+            
+            // Check if this is part of order flow
+            if (orderStep === 'address') {
+                await handleAddressInput(message);
+                return;
+            }
+            
+            // Handle special commands from quick action buttons
+            const lowerMsg = message.toLowerCase().trim();
+            
+            // "Show my orders" command
+            if (lowerMsg.includes('show my orders') || lowerMsg.includes('my orders') || lowerMsg === 'orders') {
+                if (!isAuthenticated) {
+                    addMessage('bot', '🔒 Please login to view your orders.');
+                    const loginCard = document.createElement('div');
+                    loginCard.className = 'message bot';
+                    loginCard.innerHTML = `
+                        <div class="message-avatar">🍰</div>
+                        <div class="message-content">
+                            <div class="suggested-actions">
+                                <button class="suggested-action" onclick="window.location.href='/login/'">
+                                    <i class="fas fa-sign-in-alt"></i> Login
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(loginCard);
+                } else {
+                    window.location.href = '/orders/';
+                }
+                scrollToBottom();
+                sendBtn.disabled = false;
+                return;
+            }
+            
+            // "What cakes do you have" / "Show me cakes" command
+            if (lowerMsg.includes('what cakes') || lowerMsg.includes('show me cakes') || lowerMsg.includes('show cakes') || 
+                lowerMsg === 'cakes' || lowerMsg === 'menu' || lowerMsg === 'full menu') {
+                typingIndicator.classList.add('active');
+                sendBtn.disabled = true;
+                
+                try {
+                    const response = await fetch('/api/chatbot/order/search/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify({ query: 'cake' })
+                    });
+                    
+                    const data = await response.json();
+                    typingIndicator.classList.remove('active');
+                    
+                    if (data.found && data.items.length > 0) {
+                        addMessage('bot', `🍰 Here are our delicious cakes:`);
+                        displayMenuItems(data.items, 1);
+                    } else {
+                        addMessage('bot', '😔 Sorry, no cakes available right now.');
+                    }
+                } catch (error) {
+                    typingIndicator.classList.remove('active');
+                    addMessage('bot', 'Error fetching menu. Please try again.');
+                }
+                
+                sendBtn.disabled = false;
+                scrollToBottom();
+                return;
+            }
+            
+            // "Show specials" command
+            if (lowerMsg.includes('specials') || lowerMsg.includes('special')) {
+                typingIndicator.classList.add('active');
+                sendBtn.disabled = true;
+                
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrftoken
+                        },
+                        body: JSON.stringify({ query: "What are today's specials?" })
+                    });
+                    
+                    const data = await response.json();
+                    typingIndicator.classList.remove('active');
+                    
+                    if (data.status === 'success') {
+                        addMessage('bot', data.answer);
+                    } else {
+                        addMessage('bot', 'Error fetching specials. Please try again.');
+                    }
+                } catch (error) {
+                    typingIndicator.classList.remove('active');
+                    addMessage('bot', 'Error fetching specials. Please try again.');
+                }
+                
+                sendBtn.disabled = false;
+                scrollToBottom();
+                return;
+            }
+            
+            // Check for order intent
+            const orderKeywords = ['order', 'buy', 'purchase', 'want', 'get me', 'eat', 'have'];
+            const hasOrderIntent = orderKeywords.some(keyword => message.toLowerCase().includes(keyword));
+            
+            // If user has items in cart and types a short message (likely an item name), treat it as order intent
+            const isShortItemName = chatbotCart.length > 0 && message.split(' ').length <= 3 && message.length < 30;
+            
+            if ((hasOrderIntent || isShortItemName) && !currentOrderSession) {
+                // Check if user is authenticated
+                if (!isAuthenticated) {
+                    addMessage('bot', '🔒 Please login to place an order. You can create an account or login to continue.');
+                    
+                    // Add login/signup buttons
+                    const loginCard = document.createElement('div');
+                    loginCard.className = 'message bot';
+                    loginCard.innerHTML = `
+                        <div class="message-avatar">🍰</div>
+                        <div class="message-content">
+                            <div class="suggested-actions">
+                                <button class="suggested-action" onclick="window.location.href='/login/'">
+                                    <i class="fas fa-sign-in-alt"></i> Login
+                                </button>
+                                <button class="suggested-action" onclick="window.location.href='/signin/'">
+                                    <i class="fas fa-user-plus"></i> Sign Up
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(loginCard);
+                    scrollToBottom();
+                    sendBtn.disabled = false;
+                    return;
+                }
+                
+                await handleOrderSearch(message);
+                return;
+            }
+            
+            // Show typing indicator
+            typingIndicator.classList.add('active');
+            scrollToBottom();
+            
+            // Disable send button
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ query: message })
+                });
+                
+                const data = await response.json();
+                
+                // Hide typing indicator
+                typingIndicator.classList.remove('active');
+                
+                if (data.status === 'success') {
+                    addMessage('bot', data.answer);
+                    
+                    // Check if answer mentions products
+                    if (data.answer.toLowerCase().includes('cake') || 
+                        data.answer.toLowerCase().includes('bread') || 
+                        data.answer.toLowerCase().includes('pastry')) {
+                        addSuggestedActions();
+                    }
+                } else {
+                    addMessage('bot', 'Sorry, I encountered an error. Please try again.', true);
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Unable to connect. Please check your connection and try again.', true);
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Add message to chat
+        function addMessage(type, content, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const time = new Date().toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            if (type === 'bot') {
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">🍰</div>
+                    <div class="message-content">
+                        <div class="message-bubble ${isError ? 'error-message' : ''}">
+                            ${content}
+                        </div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="message-bubble">${content}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                    <div class="message-avatar">👤</div>
+                `;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            messageHistory.push({ type, content, time });
+            scrollToBottom();
+        }
+        
+        // Add suggested actions
+        function addSuggestedActions() {
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'suggested-actions';
+            actionsDiv.innerHTML = `
+                <button class="suggested-action" onclick="window.location.href='/menu/'">
+                    <i class="fas fa-utensils"></i> View Menu
+                </button>
+                <button class="suggested-action" onclick="sendQuickMessage('Tell me more about cakes')">
+                    <i class="fas fa-info-circle"></i> Learn More
+                </button>
+                <button class="suggested-action" onclick="sendQuickMessage('What are your prices?')">
+                    <i class="fas fa-dollar-sign"></i> Check Prices
+                </button>
+            `;
+            
+            const lastMessage = chatMessages.querySelector('.message.bot:last-child .message-content');
+            if (lastMessage) {
+                lastMessage.appendChild(actionsDiv);
+            }
+        }
+        
+        // Scroll to bottom
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 100);
+        }
+        
+        // Show notification (can be triggered by events)
+        function showChatNotification() {
+            if (!chatbotContainer.classList.contains('active')) {
+                chatNotification.style.display = 'flex';
+            }
+        }
+        
+        // ========================================
+        // ORDER PLACEMENT FUNCTIONALITY
+        // ========================================
+        
+        // Handle order search
+        async function handleOrderSearch(message) {
+            console.log('🔍 handleOrderSearch called with:', message);
+            console.log('📋 pendingOrderConfirmation:', pendingOrderConfirmation);
+            
+            // Check if this is a confirmation response for pending order
+            if (pendingOrderConfirmation) {
+                const lowerMsg = message.toLowerCase().trim();
+                console.log('✅ Checking confirmation. User said:', lowerMsg);
+                
+                if (lowerMsg === 'yes' || lowerMsg === 'y' || lowerMsg === 'yeah' || lowerMsg === 'yep' || lowerMsg === 'confirm') {
+                    // User confirmed - proceed with the pending order
+                    const pending = pendingOrderConfirmation;
+                    console.log('✅ Confirmed! Searching for:', pending.itemName, 'qty:', pending.quantity);
+                    pendingOrderConfirmation = null;
+                    await searchAndDisplayItems(pending.itemName, pending.quantity);
+                    return;
+                } else if (lowerMsg === 'no' || lowerMsg === 'n' || lowerMsg === 'nope' || lowerMsg === 'cancel') {
+                    // User declined
+                    console.log('❌ User declined order');
+                    pendingOrderConfirmation = null;
+                    addMessage('bot', '❌ Order cancelled. What else can I help you with?');
+                    return;
+                } else {
+                    // Invalid response - ask again
+                    console.log('⚠️ Invalid response for confirmation');
+                    addMessage('bot', `🤔 Do you mean **${pendingOrderConfirmation.quantity}x ${pendingOrderConfirmation.itemName}**?\n\nPlease reply "yes" to confirm or "no" to cancel.`);
+                    return;
+                }
+            }
+            
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            // Extract quantity and item name from message
+            let quantity = 1;
+            let itemName = message;
+            
+            console.log('🔍 Starting quantity extraction from:', message);
+            
+            // Pattern 1: "3 fruittart" or "5 cakes" (quantity first)
+            const quantityFirstPattern = /^(\d+)\s+(.+)$/i;
+            const quantityFirstMatch = message.match(quantityFirstPattern);
+            
+            // Pattern 2: "fruittart 3" or "cakes 5" (quantity last)
+            const quantityLastPattern = /^(.+?)\s+(\d+)$/i;
+            const quantityLastMatch = message.match(quantityLastPattern);
+            
+            // Pattern 3: "order 3 fruittart", "eat 4 cakes", "have 2 cookies"
+            const orderPatterns = [
+                /(?:order|buy|purchase|get|eat|have)\s+(\d+)\s+(.+)/i,
+                /(?:order|buy|purchase|get|eat|have)\s+(?:me\s+)?(\d+)\s+(.+)/i,
+                /(?:i want|i need|i'd like)\s+(?:to\s+)?(?:order|eat|have|buy)?\s*(\d+)\s+(.+)/i,
+            ];
+            
+            let foundQuantity = false;
+            
+            // Check order patterns first (most specific)
+            for (const pattern of orderPatterns) {
+                const match = message.match(pattern);
+                if (match) {
+                    quantity = parseInt(match[1]);
+                    itemName = match[2].trim();
+                    foundQuantity = true;
+                    break;
+                }
+            }
+            
+            // If not found, check quantity-first pattern
+            if (!foundQuantity && quantityFirstMatch) {
+                const parsedQty = parseInt(quantityFirstMatch[1]);
+                const extractedItem = quantityFirstMatch[2].trim();
+                
+                // Only accept if quantity is reasonable (1-100)
+                if (parsedQty >= 1 && parsedQty <= 100) {
+                    quantity = parsedQty;
+                    itemName = extractedItem;
+                    foundQuantity = true;
+                }
+            }
+            
+            // If still not found, check quantity-last pattern
+            if (!foundQuantity && quantityLastMatch) {
+                const extractedItem = quantityLastMatch[1].trim();
+                const parsedQty = parseInt(quantityLastMatch[2]);
+                
+                // Only accept if quantity is reasonable (1-100)
+                if (parsedQty >= 1 && parsedQty <= 100) {
+                    quantity = parsedQty;
+                    itemName = extractedItem;
+                    foundQuantity = true;
+                }
+            }
+            
+            // If no quantity found, try generic patterns to extract item name
+            if (!foundQuantity) {
+                const genericPatterns = [
+                    /(?:can you|could you|please)\s+(?:order|get|buy)\s+(?:me\s+)?(?:a\s+|an\s+|some\s+|the\s+)?(.+)/i,
+                    /(?:order|buy|purchase|get)\s+(?:me\s+)?(?:a\s+|an\s+|some\s+|the\s+)?(.+)/i,
+                    /(?:i want|i need|i'd like)\s+(?:to\s+)?(?:order|eat|have|buy|get|try)\s+(?:a\s+|an\s+|some\s+|the\s+)?(.+)/i,
+                    /(?:want|need)\s+(?:to\s+)?(?:order|eat|have|buy|get|try)?\s*(?:a\s+|an\s+|some\s+|the\s+)?(.+)/i
+                ];
+                
+                for (const pattern of genericPatterns) {
+                    const match = message.match(pattern);
+                    if (match && match[1]) {
+                        itemName = match[1].trim();
+                        break;
+                    }
+                }
+            }
+            
+            console.log('📊 Extraction results - Quantity:', quantity, 'Item:', itemName, 'Found explicit quantity:', foundQuantity);
+            
+            // If quantity was found, ask for confirmation
+            if (foundQuantity && quantity > 1) {
+                console.log('❓ Asking for confirmation (qty > 1)');
+                typingIndicator.classList.remove('active');
+                sendBtn.disabled = false;
+                
+                // Store pending confirmation
+                pendingOrderConfirmation = {
+                    quantity: quantity,
+                    itemName: itemName
+                };
+                
+                addMessage('bot', `🤔 Do you mean **${quantity}x ${itemName}**?\n\nPlease reply "yes" to confirm or "no" to cancel.`);
+                scrollToBottom();
+                return;
+            }
+            
+            // Proceed with search
+            await searchAndDisplayItems(itemName, quantity);
+        }
+        
+        // Helper function to search and display items
+        async function searchAndDisplayItems(itemName, quantity = 1) {
+            console.log('🔎 searchAndDisplayItems called with:', itemName, 'qty:', quantity);
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            try {
+                console.log('📡 Fetching from API...');
+                const response = await fetch('/api/chatbot/order/search/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ query: itemName })
+                });
+                
+                const data = await response.json();
+                console.log('📦 API Response:', data);
+                typingIndicator.classList.remove('active');
+                
+                if (data.found && data.items.length > 0) {
+                    if (quantity > 1) {
+                        addMessage('bot', `${data.message} (Quantity: ${quantity})`);
+                    } else {
+                        addMessage('bot', data.message);
+                    }
+                    displayMenuItems(data.items, quantity);
+                } else {
+                    addMessage('bot', data.message || 'Item not found. What else can I help you with?');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error in searchAndDisplayItems:', error);
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error searching for items. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Display menu items as cards
+        function displayMenuItems(items, suggestedQuantity = 1) {
+            items.forEach(item => {
+                const productCard = document.createElement('div');
+                productCard.className = 'message bot';
+                productCard.innerHTML = `
+                    <div class="message-avatar">🍰</div>
+                    <div class="message-content">
+                        <div class="product-card">
+                            ${item.image_url ? `<img src="${item.image_url}" alt="${item.name}">` : ''}
+                            <div class="product-info">
+                                <h4>${item.name}</h4>
+                                <p>${item.description || item.category}</p>
+                                <div class="product-price">₹${item.price.toFixed(2)} each</div>
+                                <div class="product-actions" style="flex-direction: column; gap: 10px;">
+                                    <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+                                        <label style="font-weight: 600;">Quantity:</label>
+                                        <select id="qty-${item.id}" style="padding: 8px; border-radius: 8px; border: 1px solid #e0e0e0; font-size: 14px;">
+                                            <option value="1" ${suggestedQuantity === 1 ? 'selected' : ''}>1</option>
+                                            <option value="2" ${suggestedQuantity === 2 ? 'selected' : ''}>2</option>
+                                            <option value="3" ${suggestedQuantity === 3 ? 'selected' : ''}>3</option>
+                                            <option value="4" ${suggestedQuantity === 4 ? 'selected' : ''}>4</option>
+                                            <option value="5" ${suggestedQuantity === 5 ? 'selected' : ''}>5</option>
+                                            <option value="6" ${suggestedQuantity === 6 ? 'selected' : ''}>6</option>
+                                            <option value="7" ${suggestedQuantity === 7 ? 'selected' : ''}>7</option>
+                                            <option value="8" ${suggestedQuantity === 8 ? 'selected' : ''}>8</option>
+                                            <option value="9" ${suggestedQuantity === 9 ? 'selected' : ''}>9</option>
+                                            <option value="10" ${suggestedQuantity === 10 ? 'selected' : ''}>10</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn-order" onclick="addToCart(${item.id}, '${item.name}', ${item.price})">
+                                        <i class="fas fa-shopping-cart"></i> Add to Cart
+                                    </button>
+                                    <button class="btn-view" onclick="window.location.href='/menu/'">
+                                        <i class="fas fa-eye"></i> View Full Menu
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(productCard);
+            });
+            scrollToBottom();
+        }
+        
+        // Add item to cart
+        function addToCart(itemId, itemName, price) {
+            // Check authentication
+            if (!isAuthenticated) {
+                addMessage('bot', '🔒 Please login to place an order.');
+                
+                const loginCard = document.createElement('div');
+                loginCard.className = 'message bot';
+                loginCard.innerHTML = `
+                    <div class="message-avatar">🍰</div>
+                    <div class="message-content">
+                        <div class="suggested-actions">
+                            <button class="suggested-action" onclick="window.location.href='/login/'">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                            <button class="suggested-action" onclick="window.location.href='/signin/'">
+                                <i class="fas fa-user-plus"></i> Sign Up
+                            </button>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(loginCard);
+                scrollToBottom();
+                return;
+            }
+            
+            // Get selected quantity
+            const qtySelector = document.getElementById(`qty-${itemId}`);
+            const quantity = parseInt(qtySelector.value);
+            
+            // Check if item already in cart
+            const existingItemIndex = chatbotCart.findIndex(item => item.id === itemId);
+            
+            if (existingItemIndex >= 0) {
+                // Update quantity
+                chatbotCart[existingItemIndex].quantity += quantity;
+                addMessage('bot', `✅ Updated ${itemName} quantity to ${chatbotCart[existingItemIndex].quantity}!`);
+            } else {
+                // Add new item
+                chatbotCart.push({
+                    id: itemId,
+                    name: itemName,
+                    price: price,
+                    quantity: quantity
+                });
+                addMessage('bot', `✅ Added ${quantity}x ${itemName} to your cart!`);
+            }
+            
+            // Show cart summary and ask if they want more
+            showCartOptions();
+        }
+        
+        // Show cart options after adding item
+        function showCartOptions() {
+            const cartCard = document.createElement('div');
+            cartCard.className = 'message bot';
+            cartCard.innerHTML = `
+                <div class="message-avatar">🍰</div>
+                <div class="message-content">
+                    <div class="suggested-actions">
+                        <button class="suggested-action" onclick="showCartSummary()">
+                            <i class="fas fa-shopping-cart"></i> View Cart (${chatbotCart.length} item(s))
+                        </button>
+                        <button class="suggested-action" onclick="continueShoppingFromCart()">
+                            <i class="fas fa-plus"></i> Add More Items
+                        </button>
+                        <button class="suggested-action" onclick="proceedToCheckout()">
+                            <i class="fas fa-credit-card"></i> Checkout Now
+                        </button>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(cartCard);
+            scrollToBottom();
+        }
+        
+        // Continue shopping
+        function continueShoppingFromCart() {
+            addMessage('user', 'Show me more items');
+            addMessage('bot', 'What else would you like to order? You can ask for items like "I want Red Velvet Cake" or "Show me your menu"');
+        }
+        
+        // Show cart summary
+        function showCartSummary() {
+            if (chatbotCart.length === 0) {
+                addMessage('bot', '🛒 Your cart is empty. Start by ordering something!');
+                return;
+            }
+            
+            let cartSummary = '🛒 **Your Cart:**\\n\\n';
+            let total = 0;
+            
+            chatbotCart.forEach((item, index) => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                cartSummary += `${index + 1}. ${item.name} - ${item.quantity}x ₹${item.price.toFixed(2)} = ₹${itemTotal.toFixed(2)}\\n`;
+            });
+            
+            const deliveryFee = 50.00;
+            const grandTotal = total + deliveryFee;
+            
+            cartSummary += `\\n**Subtotal:** ₹${total.toFixed(2)}\\n`;
+            cartSummary += `**Delivery Fee:** ₹${deliveryFee.toFixed(2)}\\n`;
+            cartSummary += `**Grand Total:** ₹${grandTotal.toFixed(2)}`;
+            
+            addMessage('bot', cartSummary);
+            showCartOptions();
+        }
+        
+        // Proceed to checkout with cart items
+        async function proceedToCheckout() {
+            if (chatbotCart.length === 0) {
+                addMessage('bot', '❌ Your cart is empty. Please add items before checkout.');
+                return;
+            }
+            
+            addMessage('bot', '📦 Great! Let\'s proceed with your order. Please provide your delivery details.');
+            orderStep = 'address';
+            addAddressForm();
+        }
+        
+        // Initiate order (keeping for backward compatibility, but now redirects to cart)
+        async function initiateOrder(itemId, itemName, price, quantity = 1) {
+            // Check authentication
+            if (!isAuthenticated) {
+                addMessage('bot', '🔒 Please login to place an order.');
+                
+                const loginCard = document.createElement('div');
+                loginCard.className = 'message bot';
+                loginCard.innerHTML = `
+                    <div class="message-avatar">🍰</div>
+                    <div class="message-content">
+                        <div class="suggested-actions">
+                            <button class="suggested-action" onclick="window.location.href='/login/'">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                            <button class="suggested-action" onclick="window.location.href='/signin/'">
+                                <i class="fas fa-user-plus"></i> Sign Up
+                            </button>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(loginCard);
+                scrollToBottom();
+                return;
+            }
+            
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/chatbot/order/initiate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 
+                        item_id: itemId,
+                        quantity: quantity,
+                        user_id: isAuthenticated ? {{ user.id|default:'null' }} : null
+                    })
+                });
+                
+                const data = await response.json();
+                typingIndicator.classList.remove('active');
+                
+                if (data.success) {
+                    currentOrderSession = data.session_id;
+                    orderStep = 'address';
+                    
+                    addMessage('bot', data.message);
+                    addMessage('bot', `📦 Order Summary:\n• Item: ${data.item.name}\n• Quantity: ${data.item.quantity}\n• Price: ₹${data.item.item_total.toFixed(2)}\n• Delivery Fee: ₹${data.item.delivery_fee.toFixed(2)}\n• Total: ₹${data.item.grand_total.toFixed(2)}\n\n📍 Please provide your delivery address and phone number.`);
+                    
+                    // Add address input form
+                    addAddressForm();
+                } else {
+                    addMessage('bot', data.message || 'Could not initiate order. Please try again.');
+                }
+                
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error initiating order. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Add address form
+        function addAddressForm() {
+            const formCard = document.createElement('div');
+            formCard.className = 'message bot';
+            formCard.innerHTML = `
+                <div class="message-avatar">🍰</div>
+                <div class="message-content">
+                    <div class="product-card" style="flex-direction: column;">
+                        <input type="text" id="deliveryAddress" placeholder="Enter full delivery address" 
+                               style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <input type="tel" id="deliveryPhone" placeholder="Phone number" 
+                               style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <button class="btn-order" onclick="submitAddress()" style="width: 100%; margin-top: 10px;">
+                            <i class="fas fa-check"></i> Confirm Address
+                        </button>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(formCard);
+            scrollToBottom();
+        }
+        
+        // Submit address
+        async function submitAddress() {
+            const address = document.getElementById('deliveryAddress').value.trim();
+            const phone = document.getElementById('deliveryPhone').value.trim();
+            
+            if (!address) {
+                alert('Please enter a delivery address');
+                return;
+            }
+            
+            if (chatbotCart.length === 0) {
+                addMessage('bot', '❌ Cart is empty. Please add items first.');
+                return;
+            }
+            
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            try {
+                // Calculate totals from cart
+                let itemsTotal = 0;
+                chatbotCart.forEach(item => {
+                    itemsTotal += item.price * item.quantity;
+                });
+                const deliveryFee = 50.00;
+                const grandTotal = itemsTotal + deliveryFee;
+                
+                // Create order session with first item
+                const firstItem = chatbotCart[0];
+                
+                const initResponse = await fetch('/api/chatbot/order/initiate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 
+                        item_id: firstItem.id,
+                        quantity: firstItem.quantity,
+                        user_id: isAuthenticated ? {{ user.id|default:'null' }} : null
+                    })
+                });
+                
+                const initData = await initResponse.json();
+                if (!initData.success) {
+                    typingIndicator.classList.remove('active');
+                    addMessage('bot', 'Error creating order. Please try again.');
+                    sendBtn.disabled = false;
+                    return;
+                }
+                
+                currentOrderSession = initData.session_id;
+                
+                // Submit address
+                const addressResponse = await fetch('/api/chatbot/order/address/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 
+                        session_id: currentOrderSession,
+                        address: address,
+                        phone: phone
+                    })
+                });
+                
+                const addressData = await addressResponse.json();
+                
+                if (!addressData.success) {
+                    typingIndicator.classList.remove('active');
+                    addMessage('bot', addressData.message || 'Error processing address. Please try again.');
+                    sendBtn.disabled = false;
+                    return;
+                }
+                
+                // Create Razorpay order
+                const createResponse = await fetch('/api/chatbot/order/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 
+                        session_id: currentOrderSession
+                    })
+                });
+                
+                const createData = await createResponse.json();
+                typingIndicator.classList.remove('active');
+                
+                if (createData.success) {
+                    addMessage('user', `Address: ${address}\nPhone: ${phone}`);
+                    addMessage('bot', '✅ Delivery details saved!');
+                    
+                    // Show full cart summary
+                    let summaryText = '📦 **Order Summary:**\n\n';
+                    chatbotCart.forEach((item, index) => {
+                        const itemTotal = item.price * item.quantity;
+                        summaryText += `${index + 1}. ${item.name} - ${item.quantity}x ₹${item.price.toFixed(2)} = ₹${itemTotal.toFixed(2)}\n`;
+                    });
+                    
+                    summaryText += `\n💰 Subtotal: ₹${itemsTotal.toFixed(2)}`;
+                    summaryText += `\n🚚 Delivery: ₹${deliveryFee.toFixed(2)}`;
+                    summaryText += `\n💳 **Grand Total: ₹${grandTotal.toFixed(2)}**`;
+                    summaryText += `\n\n📍 ${address}`;
+                    summaryText += `\n📞 ${phone}`;
+                    
+                    addMessage('bot', summaryText);
+                    
+                    // Store Razorpay details and show payment button
+                    window.currentRazorpayOrder = {
+                        order_id: createData.order_id,
+                        razorpay_order_id: createData.razorpay_order_id,
+                        razorpay_key_id: createData.razorpay_key_id,
+                        amount: createData.amount,
+                        currency: createData.currency
+                    };
+                    
+                    addPaymentButton();
+                } else {
+                    addMessage('bot', createData.message || 'Error creating order. Please try again.');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error submitting order. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Handle address input from chat
+        async function handleAddressInput(message) {
+            // Parse address from message
+            const lines = message.split('\n');
+            const address = lines[0];
+            const phone = lines[1] || '';
+            
+            await submitAddressFromChat(address, phone);
+        }
+        
+        async function submitAddressFromChat(address, phone) {
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/chatbot/order/address/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ 
+                        session_id: currentOrderSession,
+                        address: address,
+                        phone: phone
+                    })
+                });
+                
+                const data = await response.json();
+                typingIndicator.classList.remove('active');
+                
+                if (data.success) {
+                    orderStep = 'payment';
+                    addMessage('bot', data.message);
+                    
+                    const summary = data.order_summary;
+                    const summaryText = `✅ Order Summary:\n\n📦 ${summary.item_name} (${summary.quantity}x)\n💰 Total: ₹${summary.grand_total.toFixed(2)}\n📍 ${summary.delivery_address}`;
+                    
+                    addMessage('bot', summaryText);
+                    addPaymentButton();
+                } else {
+                    addMessage('bot', data.message || 'Please provide a valid address.');
+                }
+                
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error processing address. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Add payment button
+        function addPaymentButton() {
+            const paymentCard = document.createElement('div');
+            paymentCard.className = 'message bot';
+            paymentCard.innerHTML = `
+                <div class="message-avatar">🍰</div>
+                <div class="message-content">
+                    <div class="product-card">
+                        <div style="text-align: center; width: 100%;">
+                            <p style="margin-bottom: 15px;">Ready to complete your order?</p>
+                            <button class="btn-order" onclick="processPayment()" style="width: 100%; padding: 12px; font-size: 16px;">
+                                <i class="fas fa-credit-card"></i> Pay with Razorpay
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(paymentCard);
+            scrollToBottom();
+        }
+        
+        // Process payment
+        async function processPayment() {
+            typingIndicator.classList.add('active');
+            sendBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/chatbot/order/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ session_id: currentOrderSession })
+                });
+                
+                const data = await response.json();
+                typingIndicator.classList.remove('active');
+                
+                if (data.success) {
+                    // Initialize Razorpay
+                    const options = {
+                        key: data.razorpay_key_id,
+                        amount: data.amount,
+                        currency: data.currency,
+                        name: 'The Bake Story',
+                        description: data.order_details.item_name,
+                        order_id: data.razorpay_order_id,
+                        handler: function (response) {
+                            verifyPayment(response);
+                        },
+                        prefill: {
+                            name: isAuthenticated ? '{{ user.first_name }} {{ user.last_name }}' : 'Guest',
+                            email: isAuthenticated ? '{{ user.email }}' : '',
+                            contact: data.order_details.delivery_address
+                        },
+                        theme: {
+                            color: '#d2691e'
+                        }
+                    };
+                    
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+                    
+                    rzp.on('payment.failed', function (response) {
+                        addMessage('bot', '❌ Payment failed. Please try again or contact support.');
+                    });
+                } else {
+                    addMessage('bot', data.message || 'Could not create order. Please try again.');
+                }
+                
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error processing payment. Please try again.');
+            } finally {
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+        
+        // Verify payment
+        async function verifyPayment(paymentData) {
+            typingIndicator.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/chatbot/order/payment/verify/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id: paymentData.razorpay_order_id,
+                        razorpay_payment_id: paymentData.razorpay_payment_id,
+                        razorpay_signature: paymentData.razorpay_signature
+                    })
+                });
+                
+                const data = await response.json();
+                typingIndicator.classList.remove('active');
+                
+                if (data.success) {
+                    addMessage('bot', data.message);
+                    addMessage('bot', `🎉 Order ID: ${data.order_id}\n⏱️ Estimated Delivery: ${data.estimated_delivery}\n\nThank you for ordering from The Bake Story! Your delicious treats are on the way! 🍰`);
+                    
+                    // Reset order flow
+                    currentOrderSession = null;
+                    orderStep = null;
+                    
+                    // Add order tracking button
+                    setTimeout(() => {
+                        addOrderTrackingButton(data.order_id);
+                    }, 1000);
+                } else {
+                    addMessage('bot', data.message || 'Payment verification failed. Please contact support.');
+                }
+                
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('bot', 'Error verifying payment. Please contact support with your payment details.');
+            } finally {
+                scrollToBottom();
+            }
+        }
+        
+        // Add order tracking button
+        function addOrderTrackingButton(orderId) {
+            const trackCard = document.createElement('div');
+            trackCard.className = 'message bot';
+            trackCard.innerHTML = `
+                <div class="message-avatar">🍰</div>
+                <div class="message-content">
+                    <div class="suggested-actions">
+                        <button class="suggested-action" onclick="window.location.href='/orders/'">
+                            <i class="fas fa-list"></i> View My Orders
+                        </button>
+                        <button class="suggested-action" onclick="sendQuickMessage('order again')">
+                            <i class="fas fa-redo"></i> Order Again
+                        </button>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(trackCard);
+            scrollToBottom();
+        }
+        
+        // Initial greeting when page loads
+        setTimeout(() => {
+            if (messageHistory.length === 0) {
+                showChatNotification();
+            }
+        }, 3000);
     </script>
+    
+    <!-- Razorpay Script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

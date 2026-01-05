@@ -48,6 +48,7 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=50.00)
+    razorpay_order_id = models.CharField(max_length=100, blank=True, null=True)
     
     # Delivery details
     delivery_address = models.TextField(blank=True)
@@ -69,7 +70,8 @@ class Order(models.Model):
     @property
     def grand_total(self):
         """Total amount including delivery fee"""
-        return self.total_amount + self.delivery_fee
+        from decimal import Decimal
+        return Decimal(str(self.total_amount)) + Decimal(str(self.delivery_fee))
 
 
 class OrderItem(models.Model):

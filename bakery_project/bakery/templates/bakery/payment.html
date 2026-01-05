@@ -142,6 +142,7 @@
 </style>
  <div class="payment-container">
         <div class="payment-card">
+            {% csrf_token %}
             <h2 style="color: #d2691e; margin-bottom: 20px;">
               Complete Your Payment
             </h2>
@@ -214,12 +215,18 @@
                 <input type="text" class="payment-input" placeholder="Cardholder Name">
             </div>
             
+            <!-- Delivery Details Form -->
+            <div style="margin: 25px 0;">
+                <h3 style="color: #d2691e; margin-bottom: 15px;">Delivery Details</h3>
+                <input type="text" class="payment-input" id="deliveryAddress" placeholder="Delivery Address *" required>
+                <input type="tel" class="payment-input" id="deliveryPhone" placeholder="Phone Number *" required>
+                <textarea class="payment-input" id="deliveryNotes" placeholder="Delivery Notes (Optional)" rows="3"></textarea>
+            </div>
+
             <!-- Pay Button -->
-            <a href="{% url 'upi_payment' %}" style="text-decoration: none;">
-                <button class="pay-button" id="payButton" type="button">
-                    Pay Now
-                </button>
-            </a>
+            <button class="pay-button" id="payButton" type="button">
+                Pay with Razorpay
+            </button>
         </div>
         
         <!-- Payment Success Message -->
@@ -292,6 +299,20 @@
         deliveryFeeElem.textContent = formatCurrency(deliveryFee);
         totalAmountElem.textContent = formatCurrency(totalAmount);
     }
+    
+    // Update cart display in navigation
+    function updateCartDisplay() {  
+        const cartData = JSON.parse(localStorage.getItem('bakeryCart')) || {};
+        const totalQuantity = Object.values(cartData).reduce((sum, item) => sum + item.quantity, 0);
+        const totalPrice = Object.values(cartData).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        const navQuantity = document.querySelector('#quantity');
+        const cartPrice = document.querySelector('#cart_price');
+        
+        if (navQuantity) navQuantity.textContent = totalQuantity;
+        if (cartPrice) cartPrice.textContent = `₹${totalPrice.toFixed(2)}`;
+    }
+    
     // Function to handle payment method selection
     function handlePaymentMethodChange() {  
 
@@ -321,44 +342,84 @@
 
     // Function to handle payment processing
     function processPayment() {
-        const selectedPaymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+        console.log('Payment button clicked!');
         
-        if (selectedPaymentMethod === 'UPI') {
-            // Redirect to UPI payment page
-            window.location.href = "{% url 'upi_payment' %}";
+        // Get delivery details
+        const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+        const deliveryPhone = document.getElementById('deliveryPhone').value.trim();
+        const deliveryNotes = document.getElementById('deliveryNotes').value.trim();
+        
+        console.log('Delivery details:', {deliveryAddress, deliveryPhone, deliveryNotes});
+        
+        // Validate delivery details
+        if (!deliveryAddress || !deliveryPhone) {
+            alert('Please fill in delivery address and phone number');
             return;
         }
-
-        // For other payment methods, simulate payment processing
-        const payButton = document.getElementById('payButton');
-        payButton.disabled = true;
-        payButton.textContent = 'Processing...';
-
-        setTimeout(() => {
-            // Simulate successful payment
-            const orderId = 'ORD' + Math.floor(Math.random() * 1000000);
-            const transactionId = 'TXN' + Math.floor(Math.random() * 1000000);
-
-            document.getElementById('successOrderId').textContent = orderId;
-            document.getElementById('successTransactionId').textContent = transactionId;
-
-            document.querySelector('.payment-card').style.display = 'none';
-            document.getElementById('paymentSuccess').style.display = 'block';
-
-            // Clear cart after successful payment
-            localStorage.removeItem('bakeryCart');
-            updateCartDisplay();
-        }, 2000);
+        
+        // Get cart data
+        const cartData = JSON.parse(localStorage.getItem('bakeryCart')) || {};
+        console.log('Cart data:', cartData);
+        
+        if (Object.keys(cartData).length === 0) {
+            alert('Your cart is empty!');
+            window.location.href = "{% url 'menu' %}";
+            return;
+        }
+        
+        // Create form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'payment' %}";
+        
+        // Add CSRF token
+        const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfTokenElement) {
+            alert('CSRF token not found! Please refresh the page.');
+            console.error('CSRF token element not found');
+            return;
+        }
+        
+        const csrfToken = csrfTokenElement.value;
+        console.log('CSRF token found:', csrfToken ? 'Yes' : 'No');
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add cart data
+        const cartInput = document.createElement('input');
+        cartInput.type = 'hidden';
+        cartInput.name = 'cart_data';
+        cartInput.value = JSON.stringify(cartData);
+        form.appendChild(cartInput);
+        
+        // Add delivery details
+        const addressInput = document.createElement('input');
+        addressInput.type = 'hidden';
+        addressInput.name = 'delivery_address';
+        addressInput.value = deliveryAddress;
+        form.appendChild(addressInput);
+        
+        const phoneInput = document.createElement('input');
+        phoneInput.type = 'hidden';
+        phoneInput.name = 'delivery_phone';
+        phoneInput.value = deliveryPhone;
+        form.appendChild(phoneInput);
+        
+        const notesInput = document.createElement('input');
+        notesInput.type = 'hidden';
+        notesInput.name = 'delivery_notes';
+        notesInput.value = deliveryNotes;
+        form.appendChild(notesInput);
+        
+        // Submit form
+        console.log('Submitting form...');
+        document.body.appendChild(form);
+        form.submit();
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadOrderSummary();
-        handlePaymentMethodChange();
-
-        document.getElementById('payButton').addEventListener('click', processPayment);
-    });
-
-    
 
     // Update cart display on page load
     function updateCartDisplay() {  
@@ -373,27 +434,22 @@
         if (cartPrice) cartPrice.textContent = `₹${totalPrice.toFixed(2)}`;
     }
 
-    // Load cart display when page loads
-    document.addEventListener('DOMContentLoaded', updateCartDisplay);
-
-    // Load order summary when page loads
-    document.addEventListener('DOMContentLoaded', loadOrderSummary);    
-    document.addEventListener('DOMContentLoaded', handlePaymentMethodChange);
+    // Initialize everything when DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('payButton').addEventListener('click', processPayment);
-    }); 
-
-    // Initial call to set up cart display
-    updateCartDisplay();
-    loadOrderSummary();
-    handlePaymentMethodChange();
-    document.getElementById('payButton').addEventListener('click', processPayment);
-
-   // Initial call to set up cart display
-   updateCartDisplay();
-   loadOrderSummary();
-   handlePaymentMethodChange();
-   document.getElementById('payButton').addEventListener('click', processPayment);
+        console.log('Payment page loaded!');
+        loadOrderSummary();
+        handlePaymentMethodChange();
+        updateCartDisplay();
+        
+        // Add click event to pay button
+        const payButton = document.getElementById('payButton');
+        if (payButton) {
+            console.log('Pay button found, adding event listener');
+            payButton.addEventListener('click', processPayment);
+        } else {
+            console.error('Pay button not found!');
+        }
+    });
 
 </script>
 {% endblock %}
